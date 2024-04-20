@@ -8,16 +8,16 @@ parser = argparse.ArgumentParser(
                     description='Stock PacKage Manager',
                     )
 
-subparsers = parser.add_subparsers(help='sub-command help', dest='operation')
+subparsers = parser.add_subparsers(dest='operation')
 
-add_parser = subparsers.add_parser('add', help='add help')
-del_parser = subparsers.add_parser('del', help='del help')
-sync_parser = subparsers.add_parser('sync', help='sync help')
-info_parser = subparsers.add_parser('info', help='info help')
-up_parser = subparsers.add_parser('up', help='up help')
+add_parser = subparsers.add_parser('add', help='Adds some packages to your system.', description='Adds some packages to your system.')
+del_parser = subparsers.add_parser('del', help='Deletes some packages from your system.', description='Deletes some packages from your system.')
+sync_parser = subparsers.add_parser('sync', help='Sync with remote repos.', description='Sync with remote repos.')
+info_parser = subparsers.add_parser('info', help='Displays information about the given package.', description='Displays information about the given package.')
+up_parser = subparsers.add_parser('up', help='Upgrades your system.', description='Upgrades your system.')
 
-add_parser.add_argument('packages', type=str, nargs='+', help='Packages to add')
-del_parser.add_argument('packages', type=str, nargs='+', help='Packages to delete')
+add_parser.add_argument('packages', type=str, nargs='*', help='Packages to add')
+del_parser.add_argument('packages', type=str, nargs='*', help='Packages to delete')
 info_parser.add_argument('package', type=str, help='Package to display')
 
 args = parser.parse_args()
