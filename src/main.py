@@ -27,7 +27,7 @@ args = parser.parse_args()
 config = get_config()
 
 if args.operation == 'add':
-    operations.add(args.packages)
+    operations.add(config, args.packages)
 elif args.operation == 'del':
     operations.delete(args.packages)
 elif args.operation == 'sync':
