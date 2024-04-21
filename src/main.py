@@ -24,6 +24,7 @@ del_parser.add_argument('packages', type=str, nargs='*', help='Packages to delet
 info_parser.add_argument('package', type=str, help='Package to display')
 
 args = parser.parse_args()
+config = get_config()
 
 if args.operation == 'add':
     operations.add(args.packages)
@@ -32,8 +33,8 @@ elif args.operation == 'del':
 elif args.operation == 'sync':
     operations.sync()
 elif args.operation == 'info':
-    operations.info(args.package)
+    operations.info(config, args.package)
 elif args.operation == 'up':
     operations.up()
 elif args.operation == 'conf':
-    operations.config(get_config())
+    operations.config(config)
