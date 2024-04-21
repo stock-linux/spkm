@@ -1,6 +1,6 @@
 import os, tomllib
-    
-def get_pkg_info(config: dict, pkg: str) -> tuple | bool:
+
+def get_pkg_data(config: dict, pkg: str) -> dict | bool:
     '''Gets specified package information if the given package exists.
 
     :param dict config: SPKM Configuration
@@ -11,10 +11,10 @@ def get_pkg_info(config: dict, pkg: str) -> tuple | bool:
     '''
 
     for repo in config['repos']:
-        for group in os.listdir(config['general']['dbpath'] + '/dist/' + repo):
-            if os.path.exists(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg):
-                base_toml_data = tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg + '/package.toml', 'rb'))
-                build_toml_data = tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg + '/build.toml', 'rb'))
+        for group in os.listdir(config['general']['dbpath'] + '/dist/' + repo['name']):
+            if os.path.exists(config['general']['dbpath'] + '/dist/' + repo['name'] + '/' + group + '/' + pkg):
+                base_toml_data = tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo['name'] + '/' + group + '/' + pkg + '/package.toml', 'rb'))
+                build_toml_data = tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo['name'] + '/' + group + '/' + pkg + '/build.toml', 'rb'))
                 
                 pkg_data = base_toml_data
 
@@ -23,7 +23,7 @@ def get_pkg_info(config: dict, pkg: str) -> tuple | bool:
                 else:
                     pkg_data['dependencies'] = []
                 
-                return ((repo, config['repos'][repo], group), pkg_data)
+                return {'repo': repo, 'group': group, 'pkg_info': pkg_data}
 
     return False
 
