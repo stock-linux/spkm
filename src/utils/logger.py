@@ -16,13 +16,23 @@ class Logger:
         print(msg)
         print()
 
-    def log_err(self, err: str):
+    def log_err(self, err: str, err_content = False):
         msg = self.red
         
         if self.config['general']['colors'] == False:
             msg += self.reset
 
-        msg += f'ERROR - {err}{self.reset}'
+        msg += f'{"ERROR " if not err_content else ""}- {err}{self.reset}'
+
+        print(msg)
+
+    def log_info(self, info: str):
+        msg = self.cyan
+        
+        if self.config['general']['colors'] == False:
+            msg += self.reset
+
+        msg += f'INFO - {info}{self.reset}'
 
         print(msg)
 
