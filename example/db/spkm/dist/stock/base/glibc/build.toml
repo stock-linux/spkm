@@ -1,0 +1,10 @@
+name = 'glibc'
+version = '2.17.0'
+description = 'The GNU C library'
+packager = 'Skythrew'
+
+[[dependencies]]
+name = 'blabla'
+
+[[run]]
+name = 'blabla'

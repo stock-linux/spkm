@@ -1,0 +1,13 @@
+name = 'gcc'
+version = '13.3.0'
+description = 'The GNU C Compiler'
+packager = 'Skythrew'
+
+[[dependencies]]
+name = 'glibc'
+
+[[run]]
+name = 'glibc'
+
+[[run]]
+name = 'blabla'
