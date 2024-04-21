@@ -13,7 +13,17 @@ def get_pkg_info(config: dict, pkg: str) -> tuple | bool:
     for repo in config['repos']:
         for group in os.listdir(config['general']['dbpath'] + '/dist/' + repo):
             if os.path.exists(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg):
-                return ((repo, config['repos'][repo], group), tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg + '/package.toml', 'rb')))
+                base_toml_data = tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg + '/package.toml', 'rb'))
+                build_toml_data = tomllib.load(open(config['general']['dbpath'] + '/dist/' + repo + '/' + group + '/' + pkg + '/build.toml', 'rb'))
+                
+                pkg_data = base_toml_data
+
+                if 'run' in build_toml_data:
+                    pkg_data['dependencies'] = build_toml_data['run']
+                else:
+                    pkg_data['dependencies'] = []
+                
+                return ((repo, config['repos'][repo], group), pkg_data)
 
     return False
 
