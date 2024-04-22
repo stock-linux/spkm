@@ -3,7 +3,7 @@ import shutil
 from operations.upgrade import upgrade_local
 from utils.logger import Logger
 from utils.db import get_pkg_data, is_pkg_installed
-from utils.exceptions import PackagesNotFoundException, PkgDownloadError
+from utils.exceptions import PackagesNotFoundException, PkgDownloadError, PkgExtractionError
 
 from typing import cast
 
@@ -58,4 +58,8 @@ def add(config: dict, pkgs: list[str]):
         except PkgDownloadError:
             logger.log_err(f'An error occured during the download. Exiting.')
             
+            exit(1)
+        except PkgExtractionError:
+            logger.log_err(f'One or multiple package decompression processes failed. Check the logs and be careful.')
+
             exit(1)

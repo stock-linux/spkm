@@ -6,3 +6,6 @@ class PackagesNotFoundException(Exception):
 
 class PkgDownloadError(Exception):
     pass
+
+class PkgExtractionError(Exception):
+    pass

@@ -1,8 +1,8 @@
-import os, sys, shutil, tomllib, datetime, hashlib
+import os, sys, shutil, tomllib, datetime, hashlib, multiprocessing
 
 from urllib.request import urlopen
 
-from utils.exceptions import PackagesNotFoundException, PkgDownloadError
+from utils.exceptions import PackagesNotFoundException, PkgDownloadError, PkgExtractionError
 from utils.db import get_pkg_data, is_pkg_installed
 
 def get_ops(config: dict) -> dict[str, list]:
@@ -64,6 +64,23 @@ def solve_pkg_deps(config: dict, pkg: str) -> list[dict]:
 
     return pkg_adds
 
+def extract_pkg_archive(config: dict, pkg: str, archive: str):
+    '''Extracts a package archive into the root directory.
+
+    :param dict config: SPKM Configuration
+    :param str pkg: Package name
+    :param str archive: Archive path
+
+    :return: None
+    '''
+
+    root = config['general']['root']
+    os.makedirs(root, exist_ok=True)
+
+    os.system(f'tar -xhpf {archive} -C {root}')
+    os.makedirs(config['general']['dbpath'] + '/trees/', exist_ok=True)
+    shutil.move(root + '/' + pkg + '.tree', config['general']['dbpath'] + '/local/trees/' + pkg + '.tree')
+
 def add_pkg(config: dict, pkg: str):
     '''Adds a package (and its dependencies) to the system.
 
@@ -76,6 +93,8 @@ def add_pkg(config: dict, pkg: str):
     # We actually reverse the list to install dependencies first
     adds.reverse()
 
+    extract_processes = []
+    
     for add in adds:
         # Get the useful package infos
 
@@ -190,8 +209,25 @@ def add_pkg(config: dict, pkg: str):
             if hash_md5.hexdigest() != pkg_md5:
                 raise PkgDownloadError
 
+        extract_processes.append(multiprocessing.Process(target=extract_pkg_archive, args=(config, pkg_name, dest_path)))
 
-    print(adds)
+    for i in range(len(extract_processes)):
+        if (i + 1) % config['general']['threads'] == 0:
+            for process in extract_processes[i - config['general']['threads'] + 1:i + 1]:
+                process.start()
+
+            for process in extract_processes[i - config['general']['threads'] + 1:i + 1]:
+                process.join()
+        elif i + 1 == len(extract_processes):
+            for process in extract_processes[i - ((i + 1) % config['general']['threads']) + 1:]:
+                process.start()
+
+            for process in extract_processes[i - ((i + 1) % config['general']['threads']) + 1:]:
+                process.join()
+
+    for process in extract_processes:
+        if process.exitcode != 0:
+            raise PkgExtractionError
 
 def upgrade_local(config: dict):
     '''Upgrades the local system by comparing the given world file with the local index and applying the correct operations.
