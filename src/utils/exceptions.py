@@ -3,3 +3,6 @@ class PackagesNotFoundException(Exception):
 
     def __init__(self, pkgs: list[str]):
         self.pkgs: list[str] = pkgs
+
+class PkgDownloadError(Exception):
+    pass

@@ -3,7 +3,7 @@ import shutil
 from operations.upgrade import upgrade_local
 from utils.logger import Logger
 from utils.db import get_pkg_data, is_pkg_installed
-from utils.exceptions import PackagesNotFoundException
+from utils.exceptions import PackagesNotFoundException, PkgDownloadError
 
 from typing import cast
 
@@ -53,3 +53,9 @@ def add(config: dict, pkgs: list[str]):
 
             print()
             logger.log_err('Cannot apply package add operation.')
+            
+            exit(1)
+        except PkgDownloadError:
+            logger.log_err(f'An error occured during the download. Exiting.')
+            
+            exit(1)

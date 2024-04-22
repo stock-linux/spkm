@@ -1,6 +1,8 @@
-import tomllib
+import os, sys, shutil, tomllib, datetime, hashlib
 
-from utils.exceptions import PackagesNotFoundException
+from urllib.request import urlopen
+
+from utils.exceptions import PackagesNotFoundException, PkgDownloadError
 from utils.db import get_pkg_data, is_pkg_installed
 
 def get_ops(config: dict) -> dict[str, list]:
@@ -70,6 +72,125 @@ def add_pkg(config: dict, pkg: str):
     '''
 
     adds = solve_pkg_deps(config, pkg)
+  
+    # We actually reverse the list to install dependencies first
+    adds.reverse()
+
+    for add in adds:
+        # Get the useful package infos
+
+        pkg_name = add['pkg_info']['name']
+        pkg_version = add['pkg_info']['version']
+        pkg_release = add['pkg_info']['release']
+        pkg_md5 = add['pkg_info']['md5']
+
+        filename = add['group'] + '/' + add['pkg_info']['name'] + '/' + add['pkg_info']['name'] + '-' + add['pkg_info']['version'] + '.tar.zst'
+            
+        src_path = add['repo']['url'] + '/' + filename
+        dest_path = config['general']['cache']  + '/' + add['repo']['name'] + '/' + filename
+
+        # Create the cache directory as it can be inexistant
+
+        os.makedirs('/'.join(dest_path.split('/')[:-1]), exist_ok=True)
+
+        if os.path.exists(add['repo']['url']):
+            # Since we use a local repo, no need to download a file, just need to copy it
+            
+            shutil.copy(src_path, dest_path)
+        else:
+            # Get the size of the file to download
+
+            total_length = add['pkg_info']['size']
+            total_length_kb = int(total_length / 1024)
+            total_length_mb = int(total_length / 1024 / 1024)
+
+            # Set a convenient display of the size
+
+            total_length_display = ''
+
+            if total_length_mb > 0:
+                total_length_display = str(total_length_mb) + 'M'
+            else:
+                total_length_display = str(total_length_kb) + 'K'
+
+            # Initialize request
+            
+            req = urlopen(src_path)
+            CHUNK_SIZE = 2 * 1024 * 1024
+            dl = 0
+
+            start_time = datetime.datetime.now()
+            end_time = start_time
+            diff = end_time - start_time
+
+            # Initialize md5 hash
+            
+            hash_md5 = hashlib.md5()
+
+            # Download the file
+
+            with open(dest_path, 'wb') as f:
+                while True:
+                    start_time = datetime.datetime.now()
+                    
+                    if diff.total_seconds() > 0:
+                        speed = CHUNK_SIZE / diff.total_seconds()
+                    else:
+                        speed = 0
+
+                    speed_kb = int(speed / 1024)
+                    speed_mb = int(speed / 1024 / 1024)
+
+                    dl += CHUNK_SIZE
+
+                    if dl > total_length:
+                        dl = total_length
+
+                    dl_kb = int(dl / 1024)
+                    dl_mb = dl / 1024 / 1024
+
+                    dl_display = ''
+                    speed_display = ''
+
+                    # Set a convenient display for download size display and speed rate
+                    
+                    if total_length_mb > 0:
+                        dl_display = str(int(dl_mb)) + 'M'
+                    else:
+                        dl_display = str(int(dl_kb)) + 'K'
+
+                    if speed_mb > 0:
+                        speed_display = str(speed_mb) + 'M/s'
+                    else:
+                        speed_display = str(speed_kb) + 'K/s'
+
+                    chunk = req.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+
+                    f.write(chunk)
+                    done = int(50 * dl / total_length)
+
+                    # Display the progress bar
+
+                    sys.stdout.write(f"\x1b[1K\r{pkg_name}-{pkg_version} [%s%s] ({dl_display}/{total_length_display} - {speed_display})" % ('=' * done, ' ' * (50-done)) )    
+                    sys.stdout.flush()
+                    
+                    end_time = datetime.datetime.now()
+                    diff = end_time - start_time
+                    
+                    # Update md5 hash
+
+                    hash_md5.update(chunk)
+            
+            print()
+
+            # If the downloaded file's hash is not the same as in the package infos, we raise an error
+
+            if hash_md5.hexdigest() != pkg_md5:
+                raise PkgDownloadError
+
+
     print(adds)
 
 def upgrade_local(config: dict):
