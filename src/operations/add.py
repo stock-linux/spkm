@@ -18,26 +18,27 @@ def add(config: dict, pkgs: list[str]):
     
     logger = Logger(config)
 
-    shutil.copy(config['general']['dbpath'] + '/local', config['general']['dbpath'] + '/world')
-
     err = False
 
-    with open(config['general']['dbpath'] + '/world', 'a') as world_file:
-        for pkg in pkgs:
-            if is_pkg_installed(config, pkg):
-                logger.log_info(f'Package `{pkg}` already installed.')
-                continue
+    for pkg in list(set(pkgs)):
+        if is_pkg_installed(config, pkg):
+            logger.log_info(f'Package `{pkg}` already installed.')
+            continue
 
-            pkg_data = get_pkg_data(config, pkg)
+        pkg_data = get_pkg_data(config, pkg)
 
-            if pkg_data == False:
-                logger.log_err(f'Package `{pkg}` not found.')
-                err = True
-            elif isinstance(pkg_data, dict):
+        if pkg_data == False:
+            logger.log_err(f'Package `{pkg}` not found.')
+            err = True
+        elif isinstance(pkg_data, dict):
+            with open(config['general']['dbpath'] + '/world', 'a') as world_file:
                 pkg_name = pkg_data['pkg_info']['name']
                 pkg_version = pkg_data['pkg_info']['version']
+                pkg_release = pkg_data['pkg_info']['release']
 
-                world_file.write(f'{pkg_name} = \'{pkg_version}\'\n')
+                world_file.write(f'[{pkg_name}]\n')
+                world_file.write(f'version = \'{pkg_version}\'\n')
+                world_file.write(f'release = {pkg_release}\n\n')
 
     if err:
         exit(1)

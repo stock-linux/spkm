@@ -1,5 +1,6 @@
 name = 'glibc'
 version = '2.17.0'
+release = 1
 description = 'The GNU C library'
 packager = 'Skythrew'
 

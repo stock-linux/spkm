@@ -1,4 +1,5 @@
 name = 'blabla'
 version = '1.17.0'
+release = 1
 description = 'BLABLA'
 packager = 'Skythrew'

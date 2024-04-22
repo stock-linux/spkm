@@ -1,5 +1,6 @@
 name = 'gcc'
 version = '13.3.0'
+release = 1
 description = 'The GNU C Compiler'
 packager = 'Skythrew'
 

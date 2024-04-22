@@ -23,8 +23,8 @@ def get_ops(config: dict) -> dict[str, list]:
     for package in local_data:
         if package not in world_data:
             ops['del'].append(package)
-        elif local_data[package] != world_data[package]:
-            ops['up'].append(((package, local_data[package]), (package, world_data[package])))
+        elif local_data[package]['version'] != world_data[package]['version'] or local_data[package]['release'] != world_data[package]['release']:
+            ops['up'].append(((package, local_data[package]['version'], local_data[package]['release']), (package, world_data[package]['version'], world_data[package]['release'])))
 
     for package in world_data:
         if package not in local_data:
