@@ -24,6 +24,7 @@ def get_pkg_data(config: dict, pkg: str) -> dict | bool:
                     pkg_data['dependencies'] = []
 
                 pkg_data['size'] = build_toml_data['size']
+                pkg_data['md5'] = build_toml_data['md5']
                 
                 return {'repo': repo, 'group': group, 'pkg_info': pkg_data}
 
