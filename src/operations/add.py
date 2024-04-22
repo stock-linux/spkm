@@ -60,6 +60,6 @@ def add(config: dict, pkgs: list[str]):
             
             exit(1)
         except PkgExtractionError:
-            logger.log_err(f'One or multiple package decompression processes failed. Check the logs and be careful.')
+            logger.log_err(f'One or multiple package decompression processes failed. The system has been restored for safety. Check the logs.')
 
             exit(1)

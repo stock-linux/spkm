@@ -64,7 +64,10 @@ def solve_pkg_deps(config: dict, pkg: str) -> list[dict]:
 
     return pkg_adds
 
-def extract_pkg_archive(config: dict, pkg: str, archive: str):
+extracted_pkgs = []
+fails = []
+
+def extract_pkg_archive(config: dict, pkg_info: dict, archive: str):
     '''Extracts a package archive into the root directory.
 
     :param dict config: SPKM Configuration
@@ -73,13 +76,19 @@ def extract_pkg_archive(config: dict, pkg: str, archive: str):
 
     :return: None
     '''
-
+    
+    pkg = pkg_info['name']
     root = config['general']['root']
     os.makedirs(root, exist_ok=True)
 
-    os.system(f'tar -xhpf {archive} -C {root}')
+    ret_code = os.system(f'tar -xhpf {archive} -C {root}')
+    
+    if ret_code != 0:
+        raise PkgExtractionError
+
     os.makedirs(config['general']['dbpath'] + '/trees/', exist_ok=True)
     shutil.move(root + '/' + pkg + '.tree', config['general']['dbpath'] + '/local/trees/' + pkg + '.tree')
+    extracted_pkgs.append(pkg_info)
 
 def add_pkg(config: dict, pkg: str):
     '''Adds a package (and its dependencies) to the system.
@@ -209,7 +218,7 @@ def add_pkg(config: dict, pkg: str):
             if hash_md5.hexdigest() != pkg_md5:
                 raise PkgDownloadError
 
-        extract_processes.append(multiprocessing.Process(target=extract_pkg_archive, args=(config, pkg_name, dest_path)))
+        extract_processes.append(multiprocessing.Process(target=extract_pkg_archive, args=(config, add['pkg_info'], dest_path)))
 
     for i in range(len(extract_processes)):
         if (i + 1) % config['general']['threads'] == 0:
@@ -225,9 +234,9 @@ def add_pkg(config: dict, pkg: str):
             for process in extract_processes[i - ((i + 1) % config['general']['threads']) + 1:]:
                 process.join()
 
-    for process in extract_processes:
-        if process.exitcode != 0:
-            raise PkgExtractionError
+    for i in range(len(extract_processes)):
+        if extract_processes[i].exitcode != 0:
+            fails.append(adds[i])
 
 def upgrade_local(config: dict):
     '''Upgrades the local system by comparing the given world file with the local index and applying the correct operations.
@@ -243,5 +252,15 @@ def upgrade_local(config: dict):
     for package in ops['up']:
         pass
 
-    for package in ops['add']:
+    for package in ops['add']:    
         add_pkg(config, package[0])
+
+        with open(config['general']['dbpath'] + '/local', 'a') as f:
+            for pkg in extracted_pkgs:
+                f.write('[' + pkg['name'] + ']\n')
+                f.write('version = \'' + pkg['version'] + '\'\n')
+                f.write('release = \'' + pkg['release'] + '\'\n\n')
+        
+        if len(fails) > 0:
+            # TODO: WE MUST DELETE THE EXTRACTED PACKAGES.
+            raise PkgExtractionError
