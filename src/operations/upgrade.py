@@ -236,6 +236,11 @@ def add_pkg(config: dict, pkg: str):
                 process.join()
 
     for i in range(len(extract_processes)):
+        # Copy the package tree to a 'local' storage
+        
+        os.makedirs(config['general']['dbpath'] + '/trees/', exist_ok=True)
+        shutil.copy(config['general']['dbpath'] + '/dist/' + add['repo']['name'] + '/' + add['group'] + '/' + add['pkg_info']['name'] + '/tree', config['general']['dbpath'] + '/trees/' + add['pkg_info']['name'] + '.tree')
+        
         if extract_processes[i].exitcode != 0:
             fails.append(adds[i])
         else:
