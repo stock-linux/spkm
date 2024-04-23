@@ -90,8 +90,6 @@ def extract_pkg_archive(config: dict, pkg_info: dict, archive: str):
     if ret_code != 0:
         raise PkgExtractionError
 
-    os.makedirs(config['general']['dbpath'] + '/trees/', exist_ok=True)
-    shutil.move(root + '/' + pkg + '.tree', config['general']['dbpath'] + '/local/trees/' + pkg + '.tree')
     extracted_pkgs.append(pkg_info)
 
 def add_pkg(config: dict, pkg: str):
