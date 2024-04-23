@@ -90,8 +90,6 @@ def extract_pkg_archive(config: dict, pkg_info: dict, archive: str):
     if ret_code != 0:
         raise PkgExtractionError
 
-    extracted_pkgs.append(pkg_info)
-
 def add_pkg(config: dict, pkg: str):
     '''Adds a package (and its dependencies) to the system.
 
@@ -123,102 +121,103 @@ def add_pkg(config: dict, pkg: str):
 
         os.makedirs('/'.join(dest_path.split('/')[:-1]), exist_ok=True)
 
-        if os.path.exists(add['repo']['url']):
-            # Since we use a local repo, no need to download a file, just need to copy it
-            
-            shutil.copy(src_path, dest_path)
-        else:
-            # Get the size of the file to download
-
-            total_length = add['pkg_info']['size']
-            total_length_kb = int(total_length / 1024)
-            total_length_mb = int(total_length / 1024 / 1024)
-
-            # Set a convenient display of the size
-
-            total_length_display = ''
-
-            if total_length_mb > 0:
-                total_length_display = str(total_length_mb) + 'M'
+        if not (os.path.exists(dest_path) and hashlib.md5(open(dest_path, 'rb').read()).hexdigest() == pkg_md5):
+            if os.path.exists(add['repo']['url']):
+                # Since we use a local repo, no need to download a file, just need to copy it
+                
+                shutil.copy(src_path, dest_path)
             else:
-                total_length_display = str(total_length_kb) + 'K'
+                # Get the size of the file to download
 
-            # Initialize request
-            
-            req = urlopen(src_path)
-            CHUNK_SIZE = 2 * 1024 * 1024
-            dl = 0
+                total_length = add['pkg_info']['size']
+                total_length_kb = int(total_length / 1024)
+                total_length_mb = int(total_length / 1024 / 1024)
 
-            start_time = datetime.datetime.now()
-            end_time = start_time
-            diff = end_time - start_time
+                # Set a convenient display of the size
 
-            # Initialize md5 hash
-            
-            hash_md5 = hashlib.md5()
+                total_length_display = ''
 
-            # Download the file
+                if total_length_mb > 0:
+                    total_length_display = str(total_length_mb) + 'M'
+                else:
+                    total_length_display = str(total_length_kb) + 'K'
 
-            with open(dest_path, 'wb') as f:
-                while True:
-                    start_time = datetime.datetime.now()
-                    
-                    if diff.total_seconds() > 0:
-                        speed = CHUNK_SIZE / diff.total_seconds()
-                    else:
-                        speed = 0
+                # Initialize request
+                
+                req = urlopen(src_path)
+                CHUNK_SIZE = 2 * 1024 * 1024
+                dl = 0
 
-                    speed_kb = int(speed / 1024)
-                    speed_mb = int(speed / 1024 / 1024)
+                start_time = datetime.datetime.now()
+                end_time = start_time
+                diff = end_time - start_time
 
-                    dl += CHUNK_SIZE
+                # Initialize md5 hash
+                
+                hash_md5 = hashlib.md5()
 
-                    if dl > total_length:
-                        dl = total_length
+                # Download the file
 
-                    dl_kb = int(dl / 1024)
-                    dl_mb = dl / 1024 / 1024
+                with open(dest_path, 'wb') as f:
+                    while True:
+                        start_time = datetime.datetime.now()
+                        
+                        if diff.total_seconds() > 0:
+                            speed = CHUNK_SIZE / diff.total_seconds()
+                        else:
+                            speed = 0
 
-                    dl_display = ''
-                    speed_display = ''
+                        speed_kb = int(speed / 1024)
+                        speed_mb = int(speed / 1024 / 1024)
 
-                    # Set a convenient display for download size display and speed rate
-                    
-                    if total_length_mb > 0:
-                        dl_display = str(int(dl_mb)) + 'M'
-                    else:
-                        dl_display = str(int(dl_kb)) + 'K'
+                        dl += CHUNK_SIZE
 
-                    if speed_mb > 0:
-                        speed_display = str(speed_mb) + 'M/s'
-                    else:
-                        speed_display = str(speed_kb) + 'K/s'
+                        if dl > total_length:
+                            dl = total_length
 
-                    chunk = req.read(CHUNK_SIZE)
-                    if not chunk:
-                        break
+                        dl_kb = int(dl / 1024)
+                        dl_mb = dl / 1024 / 1024
 
-                    f.write(chunk)
-                    done = int(50 * dl / total_length)
+                        dl_display = ''
+                        speed_display = ''
 
-                    # Display the progress bar
+                        # Set a convenient display for download size display and speed rate
+                        
+                        if total_length_mb > 0:
+                            dl_display = str(int(dl_mb)) + 'M'
+                        else:
+                            dl_display = str(int(dl_kb)) + 'K'
 
-                    sys.stdout.write(f"\x1b[1K\r{pkg_name}-{pkg_version} [%s%s] ({dl_display}/{total_length_display} - {speed_display})" % ('=' * done, ' ' * (50-done)) )    
-                    sys.stdout.flush()
-                    
-                    end_time = datetime.datetime.now()
-                    diff = end_time - start_time
-                    
-                    # Update md5 hash
+                        if speed_mb > 0:
+                            speed_display = str(speed_mb) + 'M/s'
+                        else:
+                            speed_display = str(speed_kb) + 'K/s'
 
-                    hash_md5.update(chunk)
-            
-            print()
+                        chunk = req.read(CHUNK_SIZE)
+                        if not chunk:
+                            break
 
-            # If the downloaded file's hash is not the same as in the package infos, we raise an error
+                        f.write(chunk)
+                        done = int(50 * dl / total_length)
 
-            if hash_md5.hexdigest() != pkg_md5:
-                raise PkgDownloadError
+                        # Display the progress bar
+
+                        sys.stdout.write(f"\x1b[1K\r{pkg_name}-{pkg_version} [%s%s] ({dl_display}/{total_length_display} - {speed_display})" % ('=' * done, ' ' * (50-done)) )    
+                        sys.stdout.flush()
+                        
+                        end_time = datetime.datetime.now()
+                        diff = end_time - start_time
+                        
+                        # Update md5 hash
+
+                        hash_md5.update(chunk)
+                
+                print()
+
+                # If the downloaded file's hash is not the same as in the package infos, we raise an error
+
+                if hash_md5.hexdigest() != pkg_md5:
+                    raise PkgDownloadError
 
         extract_processes.append(multiprocessing.Process(target=extract_pkg_archive, args=(config, add['pkg_info'], dest_path)))
 
@@ -239,6 +238,8 @@ def add_pkg(config: dict, pkg: str):
     for i in range(len(extract_processes)):
         if extract_processes[i].exitcode != 0:
             fails.append(adds[i])
+        else:
+            extracted_pkgs.append(adds[i]['pkg_info'])
 
 def upgrade_local(config: dict):
     '''Upgrades the local system by comparing the given world file with the local index and applying the correct operations.
@@ -261,7 +262,7 @@ def upgrade_local(config: dict):
             for pkg in extracted_pkgs:
                 f.write('[' + pkg['name'] + ']\n')
                 f.write('version = \'' + pkg['version'] + '\'\n')
-                f.write('release = \'' + pkg['release'] + '\'\n\n')
+                f.write('release = ' + str(pkg['release']) + '\n\n')
         
         if len(fails) > 0:
             # TODO: WE MUST DELETE THE EXTRACTED PACKAGES.
