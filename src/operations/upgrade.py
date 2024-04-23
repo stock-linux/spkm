@@ -59,7 +59,7 @@ def solve_pkg_deps(config: dict, pkg: str) -> list[dict]:
                 if dep_data == False:
                     not_found_pkgs.append(dep['name'])
                 elif isinstance(dep_data, dict):
-                    pkg_adds.append(get_pkg_data(config, dep['name']))
+                    pkg_adds.append(dep_data)
 
         pkg_adds.append(pkg_data)
 
