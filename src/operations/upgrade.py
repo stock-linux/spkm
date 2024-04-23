@@ -34,9 +34,6 @@ def get_ops(config: dict) -> dict[str, list]:
 
     return ops
 
-pkg_adds = []
-not_found_pkgs = []
-
 def solve_pkg_deps(config: dict, pkg: str) -> list[dict]:
     '''Finds the dependency tree of a given package.
 
@@ -47,17 +44,24 @@ def solve_pkg_deps(config: dict, pkg: str) -> list[dict]:
     :rtype: list[dict]
     '''
 
+    pkg_adds = []
+    not_found_pkgs = []
+
     pkg_data = get_pkg_data(config, pkg)
 
     if pkg_data == False:
         not_found_pkgs.append(pkg)
     elif isinstance(pkg_data, dict):
-        pkg_adds.append(pkg_data)
-
         if 'dependencies' in pkg_data['pkg_info']:
             for dep in pkg_data['pkg_info']['dependencies']:
-                if dep not in pkg_adds and not is_pkg_installed(config, dep['name']):
-                    solve_pkg_deps(config, dep['name'])
+                dep_data = get_pkg_data(config, dep['name'])
+                
+                if dep_data == False:
+                    not_found_pkgs.append(dep['name'])
+                elif isinstance(dep_data, dict):
+                    pkg_adds.append(get_pkg_data(config, dep['name']))
+
+        pkg_adds.append(pkg_data)
 
     if len(not_found_pkgs) > 0:
         raise PackagesNotFoundException(not_found_pkgs)
