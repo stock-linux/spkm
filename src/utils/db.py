@@ -50,3 +50,20 @@ def is_pkg_installed(config: dict, pkg: str) -> str | bool:
         return local_data[pkg]
     else:
         return False
+
+def write_index_data(data: dict, filepath: str):
+    ''' Writes index data to a file.
+
+    :param dict data: Data to write
+    :param str filepath: Path to the index file
+    
+    :return: None
+    '''
+    
+    with open(filepath, 'w') as file:
+        for key in data:
+            file.write('[' + key + ']\n')
+            for data_key in data[key]:
+                file.write(data_key + ' = ' + f'\'{data[key][data_key]}\'\n')
+            
+            file.write('\n')
