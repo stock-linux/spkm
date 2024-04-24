@@ -14,11 +14,11 @@ def get_ops(config: dict) -> dict[str, list]:
     :rtype: list[tuple]
     '''
 
-    local = open(config['general']['dbpath'] + '/local', 'rb')
-    local_data = tomllib.load(local)
+    with open(config['general']['dbpath'] + '/local', 'rb') as local:
+        local_data = tomllib.load(local)
 
-    world = open(config['general']['dbpath'] + '/world', 'rb')
-    world_data = tomllib.load(world)
+    with open(config['general']['dbpath'] + '/world', 'rb') as world:
+        world_data = tomllib.load(world)
 
     ops: dict[str, list] = {'up': [], 'add': [], 'del': []}
 
@@ -99,8 +99,8 @@ def add_pkg(config: dict, pkg: str):
 
     adds = solve_pkg_deps(config, pkg)
   
-    # We actually reverse the list to install dependencies first
-    adds.reverse()
+    with open(config['general']['dbpath'] + '/local', 'rb') as local:
+        local_data = tomllib.load(local)
 
     extract_processes = []
     
