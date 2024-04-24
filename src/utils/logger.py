@@ -3,6 +3,7 @@ class Logger:
         self.config = config
         self.cyan = '\033[94m'
         self.red = '\033[31m'
+        self.green = '\033[92m'
         self.reset = '\033[00m'
         
     def log_header(self, header: str):
@@ -33,6 +34,16 @@ class Logger:
             msg += self.reset
 
         msg += f'INFO - {info}{self.reset}'
+
+        print(msg)
+
+    def log_success(self, success: str):
+        msg = self.green
+        
+        if self.config['general']['colors'] == False:
+            msg += self.reset
+
+        msg += f'SUCCESS - {success}{self.reset}'
 
         print(msg)
 
