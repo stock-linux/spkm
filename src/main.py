@@ -86,4 +86,4 @@ elif args.operation == 'info':
 elif args.operation == 'up':
     operations.up()
 elif args.operation == 'conf':
-    operations.config(config)
+    operations.display_config(config)

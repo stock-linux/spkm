@@ -4,7 +4,7 @@ import os
 
 from utils.logger import Logger
 
-def config(config: dict):
+def display_config(config: dict):
     '''
     Displays the SPKM configuration.
 
