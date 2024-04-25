@@ -78,7 +78,7 @@ config = get_config()
 if args.operation == 'add':
     operations.add(config, args.packages)
 elif args.operation == 'del':
-    operations.delete(args.packages)
+    operations.delete(config, args.packages)
 elif args.operation == 'sync':
     operations.sync()
 elif args.operation == 'info':
