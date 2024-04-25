@@ -1,7 +1,6 @@
 ''' This module is a simple function running the "add" operation. '''
 
 import tomllib
-import shutil
 import os
 import sys
 
