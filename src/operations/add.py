@@ -1,11 +1,12 @@
+''' This module is a simple function running the "add" operation. '''
+
+import tomllib
 import shutil
+import os
+import sys
 
-from operations.upgrade import upgrade_local
 from utils.logger import Logger
-from utils.db import get_pkg_data, is_pkg_installed
-from utils.exceptions import PackagesNotFoundException, PkgDownloadError, PkgExtractionError
-
-from typing import cast
+from utils.db import get_pkg_data, write_index_data
 
 def add(config: dict, pkgs: list[str]):
     '''Adds the given package list to the system.
@@ -15,51 +16,50 @@ def add(config: dict, pkgs: list[str]):
 
     :return: None
     '''
-    
+
     logger = Logger(config)
 
-    err = False
+    not_found_pkgs = []
+    to_add = []
 
     for pkg in list(set(pkgs)):
-        if is_pkg_installed(config, pkg):
-            logger.log_info(f'Package `{pkg}` already installed.')
-            continue
-
         pkg_data = get_pkg_data(config, pkg)
 
-        if pkg_data == False:
-            logger.log_err(f'Package `{pkg}` not found.')
-            err = True
+        if pkg_data is False:
+            not_found_pkgs.append(pkg)
         elif isinstance(pkg_data, dict):
-            with open(config['general']['dbpath'] + '/world', 'a') as world_file:
-                pkg_name = pkg_data['pkg_info']['name']
-                pkg_version = pkg_data['pkg_info']['version']
-                pkg_release = pkg_data['pkg_info']['release']
+            to_add.append(pkg_data)
 
-                world_file.write(f'[{pkg_name}]\n')
-                world_file.write(f'version = \'{pkg_version}\'\n')
-                world_file.write(f'release = {pkg_release}\n\n')
+    if len(not_found_pkgs) > 0:
+        logger.log_err('The following package(s) were not found:')
+        for pkg in not_found_pkgs:
+            logger.log_err(pkg, err_content=True)
 
-    if err:
-        exit(1)
-    else:
-        try:
-            upgrade_local(config)
-        except PackagesNotFoundException as err:
-            logger.log_err(f'Package(s) not found during dependency computing:')
+        sys.exit(1)
 
-            for pkg in cast(PackagesNotFoundException, err).pkgs:
-                logger.log_err(pkg, err_content=True)
+    world_path = config['general']['dbpath'] + '/world'
 
-            print()
-            logger.log_err('Cannot apply package add operation.')
-            
-            exit(1)
-        except PkgDownloadError:
-            logger.log_err(f'An error occured during the download. Exiting.')
-            
-            exit(1)
-        except PkgExtractionError:
-            logger.log_err(f'One or multiple package decompression processes failed. The system has been restored for safety. Check the logs.')
+    if os.path.exists(config['general']['dbpath'] + '/world.new'):
+        world_path = config['general']['dbpath'] + '/world.new'
 
-            exit(1)
+    with open(world_path, 'rb') as world:
+        world_data = tomllib.load(world)
+
+    for pkg_data in to_add:
+        world_data[pkg_data['pkg_info']['name']] = {
+            'version': pkg_data['pkg_info']['version'],
+            'release': pkg_data['pkg_info']['release']
+        }
+
+    if world_path == config['general']['dbpath'] + '/world':
+        shutil.copy(
+            config['general']['dbpath'] + '/world',
+            config['general']['dbpath'] + '/world.new'
+        )
+
+    write_index_data(world_data, config['general']['dbpath'] + '/world.new')
+
+    logger.log_info(
+        'Packages were added to `world.new`.'
+        'Run `spkm up` to update your system with the new changes.'
+    )
