@@ -4,6 +4,7 @@ import os
 import shutil
 import tomllib
 import multiprocessing
+import copy
 
 from utils.download import download
 from utils.logger import Logger
@@ -68,13 +69,13 @@ def get_dels(config: dict, local_data: dict, world_data: dict) -> list:
 
     return dels
 
-def get_ups(config: dict, adds: list, local_data: dict) -> tuple:
+def get_ups(config: dict, local_data: dict, dels: list) -> tuple:
     '''
     Gets incoming updates.
 
     :param dict config: SPKM Configuration
-    :param list adds: Incoming adds
     :param dict local_data: `local` index file data
+    :param list dels: Incoming package deletions
 
     :return: new_adds, ups
     :rtype: tuple
@@ -89,19 +90,25 @@ def get_ups(config: dict, adds: list, local_data: dict) -> tuple:
         if pkg_data is False:
             raise PkgNotFoundException
 
-        if (local_data[package]['version'] != pkg_data['pkg_info']['version']
+        del_data = {
+            'name': package
+        }
+        del_data.update(local_data[package])
+
+        if (del_data not in dels
+                and local_data[package]['version'] != pkg_data['pkg_info']['version']
                 or local_data[package]['release'] != pkg_data['pkg_info']['release']):
             for dep in solve_pkg_deps(config, package):
-                if dep['pkg_info']['name'] not in local_data and dep not in adds:
+                if dep['pkg_info']['name'] not in local_data:
                     new_adds.append(dep)
+
+            old_pkg_data = copy.deepcopy(pkg_data)
+            old_pkg_data['pkg_info']['version'] = local_data[package]['version']
+            old_pkg_data['pkg_info']['release'] = local_data[package]['release']
 
             ups.append(
                 (
-                    {
-                        'name': package,
-                        'version': local_data[package]['version'],
-                        'release': local_data[package]['release']
-                    },
+                    old_pkg_data,
                     pkg_data
                 )
             )
@@ -119,19 +126,20 @@ def get_ops(config: dict) -> tuple:
 
     ops: dict[str, list] = {'up': [], 'adds': [], 'dels': []}
 
-    if not os.path.exists(config['general']['dbpath'] + '/world.new'):
-        return ops, {}
-
     with open(config['general']['dbpath'] + '/local', 'rb') as local:
         local_data = tomllib.load(local)
 
-    with open(config['general']['dbpath'] + '/world.new', 'rb') as world:
-        world_data = tomllib.load(world)
+    if not os.path.exists(config['general']['dbpath'] + '/world.new'):
+        world_data = {}
+    else:
+        with open(config['general']['dbpath'] + '/world.new', 'rb') as world:
+            world_data = tomllib.load(world)
 
-    ops['adds'] = get_adds(config, local_data, world_data)
+    ops['adds'].extend(get_adds(config, local_data, world_data))
+
     ops['dels'] = get_dels(config, local_data, world_data)
 
-    new_adds, ups = get_ups(config, ops['adds'], local_data)
+    new_adds, ups = get_ups(config, local_data, ops['dels'])
     ops['adds'].extend(new_adds)
     ops['up'] = ups
 
@@ -174,13 +182,15 @@ def solve_pkg_deps(config: dict, pkg: str) -> list[dict]:
 extracted_pkgs: list = []
 fails: list = []
 
-def extract_pkg_archive(config: dict, archive: str, pkg_data: dict, logger: Logger):
+def extract_pkg_archive(config: dict, archive: str, pkg_data: dict, logger: Logger,
+    log: bool = True):
     '''Extracts a package archive into the root directory.
 
     :param dict config: SPKM Configuration
     :param str archive: Archive path
     :param dict pkg_data: Package data
     :param Logger logger: SPKM Logger
+    :param bool log: Do we have to log infos?
 
     :return: None
     '''
@@ -192,15 +202,10 @@ def extract_pkg_archive(config: dict, archive: str, pkg_data: dict, logger: Logg
 
     pkg_name = pkg_data['pkg_info']['name']
 
-    shutil.copy(
-        config['general']['dbpath'] +
-        '/dist/' +
-        pkg_data['repo']['name'] +
-        '/' +
-        pkg_data['group'] +
-        '/' +
-        pkg_name +
-        '/tree',
+    shutil.move(
+        root +
+        '/' + 
+        '.PKGTREE',
 
         config['general']['dbpath'] +
         '/trees/' +
@@ -211,7 +216,8 @@ def extract_pkg_archive(config: dict, archive: str, pkg_data: dict, logger: Logg
     if ret_code != 0:
         raise PkgExtractionError
 
-    logger.log_success(f'Package `{pkg_name}` was successfully added !')
+    if log:
+        logger.log_success(f'Package `{pkg_name}` was successfully added !')
 
 def exec_processes(threads: int, processes: list) -> int:
     '''
@@ -246,13 +252,14 @@ def exec_processes(threads: int, processes: list) -> int:
 
     return 0
 
-def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list):
+def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list, log: bool = True):
     '''Adds a package (and its dependencies) to the system.
 
     :param dict config: SPKM Configuration
     :param Logger logger: SPKM logger
     :param dict local_data: local index data
-    :param str pkg: Package name
+    :param list adds: List of packages to add
+    :param bool log: Do we have to log infos?
     '''
 
     extract_processes = []
@@ -263,8 +270,6 @@ def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list):
         pkg_name = add['pkg_info']['name']
         pkg_version = add['pkg_info']['version']
         pkg_release = add['pkg_info']['release']
-        pkg_md5 = add['pkg_info']['md5']
-
 
         filename = (add['group'] +
                     '/' +
@@ -278,7 +283,8 @@ def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list):
         src_path = add['repo']['url'] + '/' + filename
         dest_path = config['general']['cache']  + '/' + add['repo']['name'] + '/' + filename
 
-        logger.log_info(f'Adding package `{pkg_name}`...')
+        if log:
+            logger.log_info(f'Adding package `{pkg_name}`...')
 
         # Create the cache directory as it can be inexistant
 
@@ -292,7 +298,7 @@ def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list):
         extract_processes.append(
             multiprocessing.Process(
                 target=extract_pkg_archive,
-                args=(config, dest_path, add, logger)
+                args=(config, dest_path, add, logger, log)
             )
         )
 
@@ -316,7 +322,7 @@ def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list):
 
         # Incorrect md5, we raise an error
 
-        if hash_md5 != pkg_md5:
+        if hash_md5 != add['pkg_info']['md5']:
             os.remove(dest_path)
             raise PkgDownloadError
 
@@ -383,6 +389,62 @@ def del_pkg(config: dict, local_data: dict, dels: list):
 
         logger.log_success(f'Package `{pkg_name}` was successfully deleted !')
 
+def update_pkgs(config: dict, logger: Logger, local_data: dict, ups: list, revert: bool = False):
+    '''
+    Updates the list of given packages.
+
+    :param dict config: SPKM Configuration
+    :param Logger logger: SPKM Logger
+    :param dict local_data: local index data
+    :param list ups: List of packages to update
+    :param bool revert: Is this a revert of a previous update ?
+    '''
+
+    processed_ups = []
+    for up in ups:
+        processed_ups.append(up)
+
+        pkg_name = up[1]['pkg_info']['name']
+
+        logger.log_info(f'Updating package `{pkg_name}`...')
+
+        shutil.copy(
+            config['general']['dbpath'] + '/trees/' + pkg_name + '.tree',
+            config['general']['dbpath'] + '/trees/' + pkg_name + '.tree.old'
+        )
+
+        add_status = add_pkg(config, logger, local_data, [up[1] if not revert else up[0]],
+                                log = False)
+        if add_status != 0:
+            update_pkgs(config, logger, local_data, processed_ups, revert=True)
+            return 1
+
+        with open(
+            config['general']['dbpath'] + '/trees/' + pkg_name + '.tree.old',
+            'r',
+            encoding='utf-8'
+        ) as old_tree:
+            old_tree_files = old_tree.readlines()
+
+        with open(
+            config['general']['dbpath'] + '/trees/' + pkg_name + '.tree',
+            'r',
+            encoding='utf-8'
+        ) as new_tree:
+            new_tree_files = new_tree.readlines()
+
+        files_to_del = []
+        for file in old_tree_files:
+            if file not in new_tree_files:
+                files_to_del.append(file)
+
+        del_files_and_dirs(config, files_to_del)
+        os.remove(config['general']['dbpath'] + '/trees/' + pkg_name + '.tree.old')
+
+        logger.log_success(f'Successfully updated package `{pkg_name}` !')
+
+    return 0
+
 def upgrade_local(config: dict):
     '''
     Upgrades the local system by applying the correct operations.
@@ -400,8 +462,7 @@ def upgrade_local(config: dict):
         print('No change to apply.')
         return
 
-    print('----- Operations Summary -----')
-    print()
+    logger.log_header('Operations Summary')
 
     for deletion in ops['dels']:
         logger.log_del(deletion['name'] +  '-' + deletion['version'])
@@ -411,7 +472,7 @@ def upgrade_local(config: dict):
 
     for up in ops['up']:
         logger.log_up(
-            up[0]['name'] +  '-' + up[0]['version'] +
+            up[0]['pkg_info']['name'] +  '-' + up[0]['pkg_info']['version'] +
             ' => ' +
             up[1]['pkg_info']['name'] + '-' + up[1]['pkg_info']['version']
         )
@@ -421,10 +482,18 @@ def upgrade_local(config: dict):
     if input('Do you really want to apply these changes to your system ? (Y/N) ').lower() != 'y':
         return
 
-    shutil.copy(config['general']['dbpath'] + '/world', config['general']['dbpath'] + '/world.old')
+    if os.path.exists(config['general']['dbpath'] + '/world.new'):
+        shutil.copy(
+            config['general']['dbpath'] + '/world',
+            config['general']['dbpath'] + '/world.old'
+        )
 
-    shutil.copy(config['general']['dbpath'] + '/world.new', config['general']['dbpath'] + '/world')
-    os.remove(config['general']['dbpath'] + '/world.new')
+        shutil.copy(
+            config['general']['dbpath'] + '/world.new',
+            config['general']['dbpath'] + '/world'
+        )
+
+        os.remove(config['general']['dbpath'] + '/world.new')
 
     del_pkg(config, local_data, ops['dels'])
     add_status = add_pkg(config, logger, local_data, ops['adds'])
@@ -439,3 +508,6 @@ def upgrade_local(config: dict):
         upgrade_local(config)
 
         raise PkgExtractionError
+
+    update_pkgs(config, logger, local_data, ops['up'])
+    write_index_data(local_data, config['general']['dbpath'] + '/local')
