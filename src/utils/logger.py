@@ -5,10 +5,10 @@ class Logger:
         self.red = '\033[31m'
         self.green = '\033[92m'
         self.reset = '\033[00m'
-        
+
     def log_header(self, header: str):
         msg = self.cyan
-        
+
         if self.config['general']['colors'] == False:
             msg += self.reset
 
@@ -19,7 +19,7 @@ class Logger:
 
     def log_err(self, err: str, err_content = False):
         msg = self.red
-        
+
         if self.config['general']['colors'] == False:
             msg += self.reset
 
@@ -29,7 +29,7 @@ class Logger:
 
     def log_info(self, info: str):
         msg = self.cyan
-        
+
         if self.config['general']['colors'] == False:
             msg += self.reset
 
@@ -39,7 +39,7 @@ class Logger:
 
     def log_success(self, success: str):
         msg = self.green
-        
+
         if self.config['general']['colors'] == False:
             msg += self.reset
 
