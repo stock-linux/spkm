@@ -1,11 +1,10 @@
-class PackagesNotFoundException(Exception):
-    pkgs: list[str] = []
+''' Exceptions' module. '''
 
-    def __init__(self, pkgs: list[str]):
-        self.pkgs: list[str] = pkgs
+class PkgNotFoundException(Exception):
+    ''' Raised when a package is not found. '''
 
 class PkgDownloadError(Exception):
-    pass
+    ''' Raised when an error occured during a download. '''
 
 class PkgExtractionError(Exception):
-    pass
+    ''' Raised when an error occured during the extracting process. '''
