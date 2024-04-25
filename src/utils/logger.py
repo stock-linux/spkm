@@ -47,6 +47,18 @@ class Logger:
 
         print(msg)
 
+    def log_add(self, pkg: str):
+        colors = self.config['general']['colors']
+        print('[' + self.cyan + (self.reset if not colors else '') + '+' + self.reset + '] ' + pkg)
+
+    def log_del(self, pkg: str):
+        colors = self.config['general']['colors']
+        print('[' + self.red + (self.reset if not colors else '') + 'D' + self.reset + '] ' + pkg)
+
+    def log_up(self, pkg: str):
+        colors = self.config['general']['colors']
+        print('[' + self.green + (self.reset if not colors else '') + 'U' + self.reset + '] ' + pkg)
+
     def log(self, content: str):
         print(content)
         print()
