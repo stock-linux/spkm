@@ -1,3 +1,5 @@
+''' This module is a simple function running the "delete" operation. '''
+
 from utils.db import get_pkg_data, is_pkg_installed
 from utils.logger import Logger
 
@@ -9,9 +11,9 @@ def info(config: dict, pkg: str):
 
     :return: None
     '''
-    
+
     logger = Logger(config)
-    
+
     pkg_data = get_pkg_data(config, pkg)
 
     if isinstance(pkg_data, dict):
@@ -25,7 +27,7 @@ def info(config: dict, pkg: str):
         print('version:', pkg_info['version'], (f'({pkg_ver} installed)' if pkg_ver else ''))
         print('description:', pkg_info['description'])
         print('packager:', pkg_info['packager'])
-        
+
         deps_names = []
         if 'dependencies' in pkg_info:
             for dep in pkg_info['dependencies']:
