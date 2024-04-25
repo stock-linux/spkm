@@ -325,6 +325,34 @@ def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list):
 
     return status
 
+def del_files_and_dirs(config: dict, files: list):
+    '''
+    Deletes files and directories given in the files list.
+
+    :param dict config: SPKM Configuration
+    :param list files: Files and directories to delete
+
+    :return: None
+    '''
+
+    dirs_to_remove = []
+
+    for line in files:
+        line = line.strip()
+
+        if not os.path.exists(config['general']['root'] + '/' + line):
+            continue
+
+        if (not os.path.isdir(config['general']['root'] + '/' + line)
+                and not os.path.islink(config['general']['root'] + '/' + line)):
+            os.remove(config['general']['root'] + '/' + line)
+        else:
+            dirs_to_remove.append(line)
+
+    for directory in dirs_to_remove:
+        if len(os.listdir(config['general']['root'] + '/' + directory)) == 0:
+            os.removedirs(config['general']['root'] + '/' + directory)
+
 def del_pkg(config: dict, local_data: dict, dels: list):
     ''' Deletes a package (and its dependencies) from the system.
 
@@ -348,23 +376,7 @@ def del_pkg(config: dict, local_data: dict, dels: list):
             ) as tree:
             files = tree.readlines()
 
-        dirs_to_remove = []
-
-        for line in files:
-            line = line.strip()
-
-            if not os.path.exists(config['general']['root'] + '/' + line):
-                continue
-
-            if (not os.path.isdir(config['general']['root'] + '/' + line)
-                    and not os.path.islink(config['general']['root'] + '/' + line)):
-                os.remove(config['general']['root'] + '/' + line)
-            else:
-                dirs_to_remove.append(line)
-
-        for directory in dirs_to_remove:
-            if len(os.listdir(config['general']['root'] + '/' + directory)) == 0:
-                os.removedirs(config['general']['root'] + '/' + directory)
+        del_files_and_dirs(config, files)
 
         del local_data[pkg_name]
         os.remove(config['general']['dbpath'] + '/trees/' + pkg_name + '.tree')
