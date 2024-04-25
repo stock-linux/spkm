@@ -84,6 +84,6 @@ elif args.operation == 'sync':
 elif args.operation == 'info':
     operations.info(config, args.package)
 elif args.operation == 'up':
-    operations.up()
+    operations.up(config)
 elif args.operation == 'conf':
     operations.display_config(config)
