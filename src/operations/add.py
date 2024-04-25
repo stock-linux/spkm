@@ -51,12 +51,6 @@ def add(config: dict, pkgs: list[str]):
             'release': pkg_data['pkg_info']['release']
         }
 
-    if world_path == config['general']['dbpath'] + '/world':
-        shutil.copy(
-            config['general']['dbpath'] + '/world',
-            config['general']['dbpath'] + '/world.new'
-        )
-
     write_index_data(world_data, config['general']['dbpath'] + '/world.new')
 
     logger.log_info(
