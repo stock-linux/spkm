@@ -60,7 +60,7 @@ def print_progress(dl: int, total_length: int, speed: float, display_name: str) 
     )
     sys.stdout.flush()
 
-def download(url: str, file: str, total_length: int, display_name: str = '') -> str:
+def download(url: str, file: str, total_length: int = 0, display_name: str = '') -> str:
     '''
     Downloads a file.
 
@@ -111,7 +111,8 @@ def download(url: str, file: str, total_length: int, display_name: str = '') -> 
 
                 f.write(chunk)
 
-                print_progress(dl, total_length, speed, display_name)
+                if total_length != 0:
+                    print_progress(dl, total_length, speed, display_name)
 
                 end_time = datetime.datetime.now()
                 diff = end_time - start_time
