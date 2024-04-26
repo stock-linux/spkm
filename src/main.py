@@ -26,12 +26,6 @@ del_parser = subparsers.add_parser(
     description='Deletes some packages from your system.'
 )
 
-sync_parser = subparsers.add_parser(
-    'sync',
-    help='Sync with remote repos.',
-    description='Sync with remote repos.'
-)
-
 info_parser = subparsers.add_parser(
     'info',
     help='Displays information about the given package.',
@@ -79,8 +73,6 @@ if args.operation == 'add':
     operations.add(config, args.packages)
 elif args.operation == 'del':
     operations.delete(config, args.packages)
-elif args.operation == 'sync':
-    operations.sync()
 elif args.operation == 'info':
     operations.info(config, args.package)
 elif args.operation == 'up':
