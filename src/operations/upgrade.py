@@ -323,8 +323,10 @@ def add_pkg(config: dict, logger: Logger, local_data: dict, adds: list, log: boo
         # Incorrect md5, we raise an error
 
         if hash_md5 != add['pkg_info']['md5']:
+            logger.log_err(f'File {filename} has an incorrect md5 !!! Stopping everything.')
             os.remove(dest_path)
-            raise PkgDownloadError
+            status = 2
+            return status
 
     os.makedirs(config['general']['dbpath'] + '/trees/', exist_ok=True)
     status = exec_processes(config['general']['threads'], extract_processes)
@@ -415,7 +417,7 @@ def update_pkgs(config: dict, logger: Logger, local_data: dict, ups: list, rever
 
         add_status = add_pkg(config, logger, local_data, [up[1] if not revert else up[0]],
                                 log = False)
-        if add_status != 0:
+        if add_status == 1:
             update_pkgs(config, logger, local_data, processed_ups, revert=True)
             return 1
 
@@ -445,6 +447,28 @@ def update_pkgs(config: dict, logger: Logger, local_data: dict, ups: list, rever
 
     return 0
 
+def sync_repo(config: dict, repo: dict):
+    '''
+    Syncs the local "repos" with the remote ones.
+
+    :param dict config: SPKM Configuration
+    :param dict repo: The repo to sync
+
+    :return: None
+    '''
+
+    os.makedirs(config['general']['dbpath'] + '/dist/' + repo['name'] + '/' , exist_ok=True)
+
+    download(
+        repo['url'] + '/' + repo['name'] + '.db',
+        config['general']['dbpath'] + '/dist/' + repo['name'] + '/' + repo['name'] + '.db'
+    )
+
+    os.system('tar -xf ' +
+                config['general']['dbpath'] + '/dist/' + repo['name'] + '/' + repo['name'] + '.db' +
+                ' -C ' + config['general']['dbpath'] + '/dist/' + repo['name'] + '/')
+    os.remove(config['general']['dbpath'] + '/dist/' + repo['name'] + '/' + repo['name'] + '.db')
+
 def upgrade_local(config: dict):
     '''
     Upgrades the local system by applying the correct operations.
@@ -455,6 +479,18 @@ def upgrade_local(config: dict):
     '''
 
     logger = Logger(config)
+
+    for repo in config['repos']:
+        logger.log_info('Syncing repo `' + repo['name'] + '`...')
+        sync_repo(config, repo)
+        logger.log_success('Successfully synced repo `' + repo['name'] + '` !')
+        print()
+
+    with open(config['general']['dbpath'] + '/local', 'w', encoding='utf-8') as f:
+        f.close()
+
+    with open(config['general']['dbpath'] + '/world', 'w', encoding='utf-8') as f:
+        f.close()
 
     ops, local_data = get_ops(config)
 
@@ -498,9 +534,9 @@ def upgrade_local(config: dict):
     del_pkg(config, local_data, ops['dels'])
     add_status = add_pkg(config, logger, local_data, ops['adds'])
 
-    write_index_data(local_data, config['general']['dbpath'] + '/local')
+    if add_status == 1:
+        write_index_data(local_data, config['general']['dbpath'] + '/local')
 
-    if add_status != 0:
         shutil.copy(
             config['general']['dbpath'] + '/world.old',
             config['general']['dbpath'] + '/world.new'
@@ -508,6 +544,18 @@ def upgrade_local(config: dict):
         upgrade_local(config)
 
         raise PkgExtractionError
+
+    if add_status == 2:
+        shutil.copy(
+            config['general']['dbpath'] + '/world',
+            config['general']['dbpath'] + '/world.new'
+        )
+        shutil.copy(
+            config['general']['dbpath'] + '/world.old',
+            config['general']['dbpath'] + '/world'
+        )
+
+        raise PkgDownloadError
 
     update_pkgs(config, logger, local_data, ops['up'])
     write_index_data(local_data, config['general']['dbpath'] + '/local')
